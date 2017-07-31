@@ -4,6 +4,7 @@ import scala.collection.mutable.ArrayBuffer
 
 import breeze.linalg.DenseVector
 import breeze.optimize.StochasticGradientDescent
+import org.apache.spark.SparkConf
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
@@ -15,14 +16,22 @@ import com.tencent.angel.spark.models.vector.BreezePSVector
 object DemoTest {
 
   def main(args: Array[String]): Unit = {
-    val mode = "yarn-cluster"
     val dim = 100
     val numSample = 200
     val numSlices = 10
     val maxIter = 50
 
-    val builder = SparkSession.builder().master(mode)
-      .appName(this.getClass.getSimpleName)
+    val conf = new SparkConf
+    val master = conf.getOption("spark.master")
+    val isLocalTest = if (master.isEmpty || master.get.toLowerCase.startsWith("local")) true else false
+    val builder = SparkSession.builder().appName(this.getClass.getSimpleName)
+    if (isLocalTest) {
+      builder.master("local")
+        .config("spark.ps.mode", "LOCAL")
+        .config("spark.ps.jars", "")
+        .config("spark.ps.instances", "1")
+        .config("spark.ps.cores", "1")
+    }
     val spark = builder.getOrCreate()
 
     PSContext.getOrCreate(spark.sparkContext)
